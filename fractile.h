@@ -80,8 +80,8 @@ struct fractalData{
 
 
 
-void fractal_iteration(SDL_Surface *dest, struct fractalData **f, double entryx, double entryy, int iter);
-void fractal_print(SDL_Surface *dest, struct fractalData *fractal);
+void fractal_iteration(SDL_Texture *dest, struct fractalData **f, double entryx, double entryy, int iter);
+void fractal_print(SDL_Texture *dest, struct fractalData *fractal);
 void fractal_random(struct fractalData *f, int maxVects, int maxIterations);
 
 
@@ -126,7 +126,7 @@ void fractal_wobble(struct fractalData *f, int wobbleEvent);
 #define ee_right_click_up 5		// this is when the user releases the right mouse button
 
 
-bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int editorEvent);
+bool fractal_editor(SDL_Texture *dest, struct fractalData *f, int x, int y, int editorEvent);
 void init_fractal_editor();
 
 #define MAX_FRACTILE_PATH 256

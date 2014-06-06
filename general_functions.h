@@ -1,5 +1,5 @@
 #include "bool.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 
 
 // these are different error types
@@ -11,12 +11,13 @@
 bool is_empty_file(char *relativeFilePath);
 void quit_game(Uint32 quitFlag);
 void set_window_size(int w, int h);
-SDL_Surface *load_image(char* filename);
-SDL_Surface *create_surface(int width, int height);
+SDL_Texture *load_image(char* filename);
+SDL_Texture *create_surface(int width, int height);
 int init();
 int load_files();
 void clean_up();
 int get_rand(int,int);
 int roll_ht(int chance);
 bool within_rect(SDL_Rect *datrect, int x, int y);
-void print_red_box(SDL_Surface *dest);
+void print_red_box(SDL_Texture *dest);
+void error(char *);

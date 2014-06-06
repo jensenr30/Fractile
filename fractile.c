@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include "fractile.h"
 #include "graphics.h"
 #include "globals.h"
@@ -12,7 +12,7 @@
 // this is the recursive function that will draw the fractal.
 // iter (iterations) starts at 0!!
 // **f is a pointer to an array of fractals
-void fractal_iteration(SDL_Surface *dest, struct fractalData **f, double entryx, double entryy, int iter){
+void fractal_iteration(SDL_Texture *dest, struct fractalData **f, double entryx, double entryy, int iter){
 
 	int i;
 
@@ -28,7 +28,7 @@ void fractal_iteration(SDL_Surface *dest, struct fractalData **f, double entryx,
 	}
 
 
-	// recursively call more fractal iteration functions at the exit points of this iteration.
+	// recurdoes sively call more fractal iteration functions at the exit points of this iteration.
 	for(i=0; i<f[iter]->numbExits; i++){
 		fractal_iteration(dest, f, entryx+f[iter]->exits[i].x, entryy + f[iter]->exits[i].y, iter+1);
 	}
@@ -36,10 +36,10 @@ void fractal_iteration(SDL_Surface *dest, struct fractalData **f, double entryx,
 }
 
 
-// dest is the SDL_Surface to which everything will be printed
+// dest is the SDL_Texture to which everything will be printed
 // f is a pointer to the fractal structure that contains all the information about the fractal that will be printed.
 // entryx and entryy are the <x,y> coordinates of the first entry point of this iteration of the fractal
-void fractal_print(SDL_Surface *dest, struct fractalData *f){
+void fractal_print(SDL_Texture *dest, struct fractalData *f){
 	int j;
 	// make sure the fractal and the destination surface are valid
 	if(f == NULL || dest == NULL) return;
@@ -50,7 +50,7 @@ void fractal_print(SDL_Surface *dest, struct fractalData *f){
 	if(f->numbExits >= MAX_EXITS_PER_FRACTAL) f->numbExits = MAX_EXITS_PER_FRACTAL-1;
 
 	//-------------------------------------------------------------------------------
-	// fit the fractal to the screen
+	// fit the fractal to the window
 	//-------------------------------------------------------------------------------
 	double xvmax=0; // largest single vector movement in the +x direction
 	double xvmin=0; // largest single vector movement in the -x direction
@@ -100,8 +100,8 @@ void fractal_print(SDL_Surface *dest, struct fractalData *f){
 	double xdiff = xmax - xmin;
 	double ydiff = ymax - ymin;
 
-	double xscale = SCREEN_WIDTH/(xdiff);
-	double yscale = SCREEN_HEIGHT/(ydiff);
+	double xscale = WINDOW_WIDTH/(xdiff);
+	double yscale = WINDOW_WIDTH/(ydiff);
 
 	if(xscale < yscale){
 		scale = xscale;
@@ -117,7 +117,7 @@ void fractal_print(SDL_Surface *dest, struct fractalData *f){
 	struct fractalData **fp = malloc(sizeof(struct fractalData*)*f->iterations);
 
 	if(fa == NULL || fp == NULL){
-		apply_text(dest, SCREEN_WIDTH/2 - 150,SCREEN_HEIGHT/2,font16,"malloc returned NULL for either *fa or **fp", colorRed);
+		apply_text(dest, WINDOW_WIDTH/2 - 150,WINDOW_HEIGHT/2,font16,"malloc returned NULL for either *fa or **fp", colorRed);
 		return;
 	}
 	else{
@@ -178,7 +178,7 @@ void fractal_print(SDL_Surface *dest, struct fractalData *f){
 		for(i=0; i<f->iterations; i++){
 			fa[i].scale *= scale;
 		}
-		fractal_iteration(dest, fp, -((xmax+xmin)*scale)/2 + SCREEN_WIDTH/2, -((ymax+ymin)*scale)/2 + SCREEN_HEIGHT/2, 0);
+		fractal_iteration(dest, fp, -((xmax+xmin)*scale)/2 + WINDOW_WIDTH/2, -((ymax+ymin)*scale)/2 + WINDOW_HEIGHT/2, 0);
 		free(fp);
 		free(fa);
 	}
@@ -277,7 +277,7 @@ void init_fractal_editor(){
 
 // f if the fractal that we will print the vectors for
 /// returns true if the user's mouse click or event happened inside of the fractal editor.
-bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int editorEvent){
+bool fractal_editor(SDL_Texture *dest, struct fractalData *f, int x, int y, int editorEvent){
 
 	//these keep track of where the mouse was last time this function was called.
 	//static int xlast;
@@ -296,7 +296,7 @@ bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int 
 	static int editorButton=EDITOR_BUTTONS_VECTORS;
 	// this is the current width of the editor
 	static int currentWidth = EDITOR_DEFAULT_WIDTH;
-	// this is the scale at which the vectors in the editor window are printed to the screen (pixels/vector-size)
+	// this is the scale at which the vectors in the editor window are printed to the window (pixels/vector-size)
 	static double scale;
 	// this keeps track of what state the right mouse button was/is in.
 	static bool rightMouseButton=false;
@@ -412,7 +412,7 @@ bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int 
 	if(dest == NULL) return true;
 
 	//update the size of the editor window
-	editor.h = SCREEN_HEIGHT-editor.y;		// the editor window goes as far down as possible without going outside the window
+	editor.h = WINDOW_HEIGHT-editor.y;		// the editor window goes as far down as possible without going outside the window
 	editor.w = currentWidth*editorOpen;		// the width of the editor is the currentWidth if the editor is open, and 0 if the editor is closed.
 
 	//-------------------------------------------------------------------------------
@@ -420,7 +420,7 @@ bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int 
 	//-------------------------------------------------------------------------------
 	// print buttons
 	for(i=0; i<EDITOR_BUTTONS_NUMBER_OF; i++){
-		SDL_FillRect(dest, &buttons[i], EDITOR_COLOR_PRIMARY*((i%2)^1) + EDITOR_COLOR_SECONDARY*(i%2) );
+		SDL_FillRectTexture(dest, &buttons[i], EDITOR_COLOR_PRIMARY*((i%2)^1) + EDITOR_COLOR_SECONDARY*(i%2) );
 		// apply the red outline to the current
 		if(i==editorButton)
 			apply_outline(dest, &buttons[i], EDITOR_OUTLINE_THICKNESS, EDITOR_CURRENT_BUTTON_OUTLINE_COLOR);
@@ -436,14 +436,13 @@ bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int 
 
 	if(editorOpen){
 		// print the background colors of the editor
-		SDL_FillRect(dest, &editor, EDITOR_COLOR_PRIMARY);
+		SDL_FillRectTexture(dest, &editor, EDITOR_COLOR_PRIMARY);
 
 		genRect.x=editor.x+currentWidth;
 		genRect.y=editor.y;
 		genRect.w = EDITOR_SCROLL_BAR_WIDTH;
 		genRect.h = editor.h;
-		SDL_FillRect(dest, &genRect, EDITOR_COLOR_SCROLL_BAR_BACKGROUND);
-
+		SDL_FillRectTexture(dest, &genRect, EDITOR_COLOR_SCROLL_BAR_BACKGROUND);
 
 		//-------------------------------------------------------------------------------
 		// print the sidebar
@@ -455,12 +454,12 @@ bool fractal_editor(SDL_Surface *dest, struct fractalData *f, int x, int y, int 
 		genRect2.x = editor.x + editor.w/4;
 		genRect2.w = editor.w/2;
 		genRect2.h = genRect.h/2;
-		for(i=0; i<f->numbVectors && i*currentWidth<SCREEN_HEIGHT; i++){
+		for(i=0; i<f->numbVectors && i*currentWidth<WINDOW_HEIGHT; i++){
 
 			// if i is an odd integer, print an secondary color background square
 			if(i%2){
 				genRect.y = editor.y + i*currentWidth + EDITOR_TITLE_BAR_HEIGHT;
-				SDL_FillRect(dest, &genRect, EDITOR_COLOR_SECONDARY);
+				SDL_FillRectTexture(dest, &genRect, EDITOR_COLOR_SECONDARY);
 			}
 			// if the vector is wobbling, print a box around it
 			if(f->vects[i].period > 0){

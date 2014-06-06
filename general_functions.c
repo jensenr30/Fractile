@@ -1,35 +1,19 @@
 #include <stdio.h>
-#include "SDL.h"
-#include "SDL_image.h"
-#include "SDL_ttf.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include "Windows.h"
 #include "bool.h"
 #include "general_functions.h"
 #include "globals.h"
 
-/*
-/// this handles an error.
-void handle_error(int type, char *msg){
-	char fullMsg[256];
-
-	switch(type){
-	case e_loadfile:
-		strcpy(fullMsg, "Error loading:   ");
-		strcat(fullMsg, msg);
-		MessageBox(NULL, fullMsg, "Error loading file", MB_ICONERROR);
-		break;
-	case e_surface_creation:
-		MessageBox(NULL, msg, "Error creating surface",MB_ICONERROR);
-		break;
-	case e_scalingFactor:
-		MessageBox(NULL, msg, "Error scaling surface", MB_ICONERROR);
-		break;
-	default:
-		MessageBox(NULL, msg, "General Error", MB_ICONWARNING);
-		break;
-	}
+// write an error to the error file
+void error(char *line){
+	
+	FILE *fp = fopen("error.txt","a");
+	fprintf(fp, "seconds= %7.3f\t%s\n",SDL_GetTicks()/1000.0, line);
+	fclose(fp);
 }
-*/
 
 /// this function checks to see if a file is empty or not.
 // returns true if it is empty.
@@ -71,32 +55,27 @@ void quit_game(Uint32 quitFlag){
 	exit(quitFlag);
 }
 
-// this is a temporary work-around because the compiler is not finding the proper definition of SDL_RESIZABLE
-// I feel dirty putting this definition here.
-// This is not a good way to solve this problem.
-// fix this
-#define SDL_RESIZABLE 0x00000010
 
-
+/*
  void set_window_size(int w, int h){
-	screen = SDL_SetVideoMode( w, h, SCREEN_BPP, SDL_SWSURFACE | SDL_RESIZABLE );
+	SDL_CreateWindowAndRenderer( w, h, window_BPP, SDL_SWSURFACE | SDL_RESIZABLE );
 
-	//If there was an error setting up the screen
-	if(screen == NULL )
+	//If there was an error setting up the window
+	if(window == NULL )
 	{
 		exit(111);
 	}
 }
+*/
 
 
-
-
-SDL_Surface *load_image(char* filename){
+/*
+SDL_Texture *load_image(char* filename){
     //Temporary storage for the image that is loaded
-    SDL_Surface* loadedImage = NULL;
+    SDL_Texture* loadedImage = NULL;
 
     //The optimized image that will be used
-    SDL_Surface* optimizedImage = NULL;
+    SDL_Texture* optimizedImage = NULL;
 
     //Load the image with either SDL_image or LoadBMP. comment-out the one you are not using
     loadedImage = IMG_Load( filename );
@@ -119,13 +98,15 @@ SDL_Surface *load_image(char* filename){
     //Return the optimized image
     return optimizedImage;
 }
+*/
 
-
-//this returns a pointer to an SDL_Surface
-SDL_Surface *create_surface(int width, int height){
+/// antiquated function used with SDL 1.2
+/*
+//this returns a pointer to an SDL_Texture
+SDL_Texture *create_surface(int width, int height){
 
 	// try to create surface
-	SDL_Surface *retSurf = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xff000000);
+	SDL_Texture *retSurf = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xff000000);
 
 	// check to see if the surface creation went well
 	if(retSurf == NULL){
@@ -133,30 +114,46 @@ SDL_Surface *create_surface(int width, int height){
 		return NULL;
 	}
 
-	SDL_Surface *retSurfAlpha = SDL_DisplayFormatAlpha(retSurf);
+	SDL_Texture *retSurfAlpha = SDL_DisplayFormatAlpha(retSurf);
 	// delete old surface
 	SDL_FreeSurface(retSurf);
 	return retSurfAlpha;
 }
+*/
 
+
+/// returns true if everything initialized fine.
 int init(){
 	//Initialize all subsystems
 	if( SDL_Init( SDL_INIT_EVERYTHING ) == -1 ){
+		error("init() could not initialize SDL using SDL_Init()");
 		return false;
 	}
 
-	//Set up the screen
-	set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT);
+	// Set up the window
+	window = SDL_CreateWindow("Fractile v0.5", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE);
+	// set up renderer
+	renderer = SDL_CreateRenderer(window, -1, 0);
+	
+	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	//If there was an error setting up the screen
-	if(screen == NULL ){
+	//If there was an error setting up the window
+	if(window == NULL){
+		error("init() could not create window using SDL_CreateWindow()");
+		return false;
+	}
+	if(renderer == NULL){
+		error("init() could not create renderer using SDL_CreateRenderer()");
+		return false;
+	}
+	if(texture == NULL){
+		error("init() could not create texture using SDL_CreateTexture()");
 		return false;
 	}
 
 	//Set the window caption
-	SDL_WM_SetCaption( "Fractile v0.5", NULL );
+	//SDL_WM_SetCaption( "Fractile v0.5", NULL ); // antiquated function from SDL 1.2
 	programVersion = 0.5;
-
 
 
 	//If everything initialized fine
@@ -204,8 +201,10 @@ int load_files(){
 
 
 void clean_up(){
-	SDL_FreeSurface(screen);
-
+	// clean up left-over memory
+	SDL_DestroyTexture(texture);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
 
 	//Quit SDL
 	SDL_Quit();
@@ -251,14 +250,14 @@ bool within_rect(SDL_Rect *datrect, int x, int y){
 		return false;
 }
 
-/// this function prints a big red box in the middle of the screen.
+/// this function prints a big red box in the middle of the window.
 // it is nice for debugging things, but serves no gameplay purpose
-void print_red_box(SDL_Surface *dest){
+void print_red_box(SDL_Texture *dest){
 	SDL_Rect testRect;
-	testRect.x = SCREEN_WIDTH /4;
-	testRect.y = SCREEN_HEIGHT/4;
-	testRect.w = SCREEN_WIDTH /2;
-	testRect.h = SCREEN_HEIGHT/2;
-	SDL_FillRect(dest, &testRect, 0xffff0000);
+	testRect.x = WINDOW_WIDTH /4;
+	testRect.y = WINDOW_HEIGHT/4;
+	testRect.w = WINDOW_WIDTH /2;
+	testRect.h = WINDOW_HEIGHT/2;
+	SDL_FillRectTexture(dest, &testRect, 0xffff0000);
 }
 
